@@ -44,8 +44,16 @@ public class FemaleCourierModel extends CitizenModel<AbstractEntityCitizen>
 
         PartDefinition lid_r1 = backpack.addOrReplaceChild("lid_r1", CubeListBuilder.create().texOffs(100, 42).addBox(-4.0F, -1.2F, -0.5F, 8.0F, 2.0F, 6.0F, new CubeDeformation(0.4F)), PartPose.offsetAndRotation(0.0F, -2.1F, 0.6F, 0.0436F, 0.0F, 0.0F));
 
-        PartDefinition breast = bipedBody.addOrReplaceChild("breast", CubeListBuilder.create().texOffs(64, 49).addBox(-3.0F, 2.2938F, -5.716F, 8.0F, 3.0F, 3.0F, BREAST_DEFORMATION)
-          .texOffs(64, 55).addBox(-3.0F, 2.2938F, -5.716F, 8.0F, 3.0F, 3.0F, BREAST_OVERLAY_DEFORMATION), PartPose.offsetAndRotation(-1.0F, -9.0F, 4.0F, -0.5236F, 0.0F, 0.0F));
+        PartDefinition breast = bipedBody.addOrReplaceChild("breast", CubeListBuilder.create()
+          .texOffs(64, 49).addBox(-2.65F, 1.7688F, -5.116F, 3.4F, 1.05F, 2.0F, BREAST_DEFORMATION)
+          .texOffs(64, 49).addBox(1.25F, 1.7688F, -5.116F, 3.4F, 1.05F, 2.0F, BREAST_DEFORMATION)
+          .texOffs(64, 49).addBox(-3.1F, 2.7688F, -6.216F, 3.8F, 1.05F, 3.0F, BREAST_DEFORMATION)
+          .texOffs(64, 49).addBox(1.3F, 2.7688F, -6.216F, 3.8F, 1.05F, 3.0F, BREAST_DEFORMATION)
+          .texOffs(64, 49).addBox(-3.15F, 3.7688F, -7.116F, 3.8F, 1.05F, 4.0F, BREAST_DEFORMATION)
+          .texOffs(64, 49).addBox(1.35F, 3.7688F, -7.116F, 3.8F, 1.05F, 4.0F, BREAST_DEFORMATION)
+          .texOffs(64, 49).addBox(-2.4F, 4.7688F, -5.916F, 3.0F, 1.05F, 5.0F, BREAST_DEFORMATION)
+          .texOffs(64, 49).addBox(1.4F, 4.7688F, -5.916F, 3.0F, 1.05F, 5.0F, BREAST_DEFORMATION),
+          PartPose.offsetAndRotation(-1.0F, -9.0F, 4.0F, -0.4363F, 0.0F, 0.0F));
 
         PartDefinition bipedRightArm = partdefinition.addOrReplaceChild("right_arm", CubeListBuilder.create().texOffs(40, 16).addBox(-2.0F, -1.8F, -2.3F, 3.0F, 12.0F, 4.0F, new CubeDeformation(0.0F))
           .texOffs(40, 32).addBox(-2.0F, -1.8F, -2.3F, 3.0F, 12.0F, 4.0F, new CubeDeformation(0.25F)), PartPose.offset(-5.0F, 2.5F, -1.6F));

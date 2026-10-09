@@ -24,19 +24,17 @@ public class CitizenModel<T extends AbstractEntityCitizen> extends HumanoidModel
     public static boolean isItApril1st = false;
 
     /**
-     * Inflation (in 1/16 block, per axis x / y / z of the cube) applied to the "breast" cube of every adult female
-     * citizen model. The Blockbench exports use {@code new CubeDeformation(0.0F)} here; a bigger value gives the
-     * female models a bigger chest without touching any texture (the 8x3x3 texture area is simply stretched over
-     * the bigger cube). The cube is tilted by -30 degrees, so the y/z growth is what makes it stick out; x growth is
-     * kept small so the arms do not clip into it. Values above ~1.25 make the top edge of the cube rise above the
-     * neck line: increase the y origin of the cube (1.8938F in the models) accordingly if you want to go bigger.
+     * Inflation (in 1/16 of a block, per axis x / y / z of a cube) applied to every band of the bust of the adult
+     * female citizen models. The Blockbench exports put a single flat 8x3x3 cube here with
+     * {@code new CubeDeformation(0.0F)}; the models in this fork build the chest out of eight thin bands (two
+     * rounded lobes of four bands, see {@link com.minecolonies.core.client.model.FemaleCitizenModel}) and all of
+     * them use this constant, so this single line sets the bust size of every female citizen. The x axis stays
+     * small so the arms do not clip into the shape. The four bands of a lobe are 1.05 tall and step by 1.0 (they
+     * overlap a little so no two faces are ever coplanar), which spans 4.05 px instead of the original 3 px, so y
+     * should stay at or below ~1.0 before the top band starts to poke out of the collar.
+     * {@code new CubeDeformation(0.0F)} shrinks the bust down to the untouched shape and size of the bands.
      */
-    public static final CubeDeformation BREAST_DEFORMATION = new CubeDeformation(0.25F, 1.0F, 1.0F);
-
-    /**
-     * Inflation of the second (outer, 0.25 thicker) layer of the "breast" cube.
-     */
-    public static final CubeDeformation BREAST_OVERLAY_DEFORMATION = BREAST_DEFORMATION.extend(0.25F);
+    public static final CubeDeformation BREAST_DEFORMATION = new CubeDeformation(0.35F, 0.6F, 1.25F);
 
     public CitizenModel(final ModelPart part)
     {
