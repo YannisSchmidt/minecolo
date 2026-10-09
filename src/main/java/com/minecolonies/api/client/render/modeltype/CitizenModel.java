@@ -24,17 +24,18 @@ public class CitizenModel<T extends AbstractEntityCitizen> extends HumanoidModel
     public static boolean isItApril1st = false;
 
     /**
-     * Inflation (in 1/16 of a block, per axis x / y / z of a cube) applied to every band of the bust of the adult
+     * Inflation (in 1/16 of a block, per axis x / y / z of a cube) applied to every box of the bust of the adult
      * female citizen models. The Blockbench exports put a single flat 8x3x3 cube here with
-     * {@code new CubeDeformation(0.0F)}; the models in this fork build the chest out of eight thin bands (two
-     * rounded lobes of four bands, see {@link com.minecolonies.core.client.model.FemaleCitizenModel}) and all of
-     * them use this constant, so this single line sets the bust size of every female citizen. The x axis stays
-     * small so the arms do not clip into the shape. The four bands of a lobe are 1.05 tall and step by 1.0 (they
-     * overlap a little so no two faces are ever coplanar), which spans 4.05 px instead of the original 3 px, so y
-     * should stay at or below ~1.0 before the top band starts to poke out of the collar.
-     * {@code new CubeDeformation(0.0F)} shrinks the bust down to the untouched shape and size of the bands.
+     * {@code new CubeDeformation(0.0F)}; the models of this fork build the chest out of two balls, each of them a
+     * stack of bands and every band a set of concentric rings (see
+     * {@link com.minecolonies.core.client.model.FemaleCitizenModel}), and all of them use this constant, so this
+     * single line still sets how far the bust sticks out. Growing a box along z only pushes its faces forward, it
+     * stretches no texture, so that is the axis to grow on: 0.0F keeps the shape exactly as the bands describe it,
+     * 1.0F adds two thirds of a block to the projection. The other two axes have to stay at 0: the arms hang at
+     * |x| = 4 and would cut through a box grown along x, and the top band of a lobe already ends 2 px under the
+     * collar.
      */
-    public static final CubeDeformation BREAST_DEFORMATION = new CubeDeformation(0.35F, 0.6F, 1.25F);
+    public static final CubeDeformation BREAST_DEFORMATION = new CubeDeformation(0.0F, 0.0F, 0.35F);
 
     public CitizenModel(final ModelPart part)
     {

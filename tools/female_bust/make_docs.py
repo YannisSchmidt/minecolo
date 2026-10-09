@@ -127,7 +127,7 @@ def image_before_after(scale: int) -> None:
         rows.append(row(list(zip(before, [fr + " : AVANT", "", ""])) + [(spacer(before[0]), "")]
                         + list(zip(after, ["APRES", "", ""]))))
     save(row_to_image(rows), "avant_apres.png",
-         "Buste des modeles feminins adultes : a gauche l'original de MineColonies, a droite la version du fork")
+         "Buste des 40 modeles feminins adultes : a gauche l'original de MineColonies, a droite la version du fork")
 
 
 def row_to_image(rows: list[Image.Image]) -> Image.Image:
@@ -147,17 +147,19 @@ def image_three_states(scale: int) -> None:
         ups = panels(model, scale, "s0", rev=BEFORE)
         flat = panels(model, scale, "s1", rev=PREVIOUS)
         new = panels(model, scale, "s2")
-        rows.append(row(list(zip(ups, [fr + " : original", "", ""])) + [(spacer(ups[0]), "")]
-                        + list(zip(flat, ["1er essai : cube unique etire", "", ""])) + [(spacer(ups[0]), "")]
-                        + list(zip(new, ["actuel : 8 bandes + texture repeinte", "", ""]))))
+        rows.append(row(list(zip(ups, [fr + " : original, cube plat 8x3x3", "", ""])) + [(spacer(ups[0]), "")]
+                        + list(zip(flat, ["v1 : 8 bandes plates", "", ""])) + [(spacer(ups[0]), "")]
+                        + list(zip(new, ["v2 : deux boules, 6 anneaux x 5 bandes", "", ""]))))
     save(row_to_image(rows), "trois_etats.png",
-         "Le cube etire laissait une face plate et une coquille de tissu par-dessus : remplace par des bandes")
+         "Les trois etats du buste : le cube d'origine, les bandes plates de v1, les boules de v2")
 
 
 def image_sizes(scale: int) -> None:
     """The tuning knob: same shape, four sizes."""
-    variants = [("0.0F, 0.0F, 0.0F", "0 : forme seule"), ("0.2F, 0.3F, 0.6F", "discret"),
-                ("0.35F, 0.6F, 1.25F", "valeur retenue"), ("0.5F, 0.8F, 1.7F", "limite avant le cou")]
+    variants = [("0.0F, 0.0F, 0.0F", "0.0 : la forme des boites, sans rien ajouter"),
+                ("0.0F, 0.0F, 0.35F", "0.35 : valeur retenue"),
+                ("0.0F, 0.0F, 0.8F", "0.8 : tres fort"),
+                ("0.0F, 0.0F, 1.4F", "1.4 : derniere valeur avant que le dos ne soit traverse")]
     rows = []
     for model, fr in [("FemaleCitizenModel", "Citoyenne"), ("FemaleBuilderModel", "Buildeuse")]:
         items: list[tuple[Image.Image, str]] = []
@@ -169,7 +171,7 @@ def image_sizes(scale: int) -> None:
                 items.append((spacer(p[0]), ""))
         rows.append(row(items))
     save(row_to_image(rows), "comparatif_tailles.png",
-         "Tout le reglage tient dans BREAST_DEFORMATION (CitizenModel.java) : une ligne pour les 40 modeles")
+         "Le reglage de la projection tient dans BREAST_DEFORMATION (CitizenModel.java) : une ligne pour les 40 modeles")
 
 
 def image_textures() -> None:
@@ -194,13 +196,13 @@ def image_textures() -> None:
         d.text((4, 4), job, fill=(18, 18, 18), font=ImageFont.truetype(FONT, 15))
         d.text((6, cell[0].height + pad + 2), "zone echantillonnee par le buste : avant", fill=(90, 90, 90),
                font=ImageFont.truetype(FONT, 13))
-        d.text((cell[0].width + 24, cell[0].height + pad + 2), "repeinte : une couleur par ligne", fill=(120, 0, 0),
+        d.text((cell[0].width + 24, cell[0].height + pad + 2), "repeinte : une seule couleur", fill=(120, 0, 0),
                font=ImageFont.truetype(FONT, 13))
         box.alpha_composite(cell[0], (4, pad))
         box.alpha_composite(cell[1], (cell[0].width + 20, pad))
         rows.append(box)
     save(row_to_image(rows), "textures.png",
-         "La zone du buste est uniformisee ligne par ligne : aucune couture possible entre les 8 bandes")
+         "La zone du buste est uniformisee a une seule couleur : aucune couture possible entre les 30 cubes")
 
 
 def image_all_models() -> None:

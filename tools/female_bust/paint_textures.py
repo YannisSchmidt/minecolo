@@ -10,11 +10,13 @@ The bust cube (and now its eight bands) samples ``texOffs(64, 49)``, i.e. the re
 * the whole rectangle is then filled with a single smooth vertical ramp built from
   the colours the file already had there, uniform along x.
 
-The second point is what keeps the result clean: every band of the bust samples the
-same rows, so no seam can appear between the boxes, and the light-to-dark ramp is
-what makes the shape read as a rounded volume rather than as a stretched flat patch.
+The second point is what keeps the result clean: every box of the bust samples the same
+rows, so no seam can appear between them.  The rectangle is now a *single* colour -- the
+bust is a real volume since the two-ball rewrite, so the roundness is carried by the
+silhouette and by the per-face shading Minecraft adds on top of the texture, and a
+texture that varies over a face would only bring back the streaks of the old flat patch.
 
-    python3 tools/female_bust/paint_textures.py [--only default] [--dry-run] [--check]
+    python3 tools/female_bust/paint_textures.py [--only default] [--dry-run] [--ramp]
 """
 from __future__ import annotations
 
@@ -47,7 +49,7 @@ def texture_files(styles=None, genders=("female",)):
     return out
 
 
-def paint_file(path: str, dry: bool = False):
+def paint_file(path: str, dry: bool = False, flat: bool = True):
     """Returns (merged_pixels, changed, colors) for one texture."""
     im = Image.open(path)
     size = im.size
@@ -55,7 +57,7 @@ def paint_file(path: str, dry: bool = False):
     s = P.scale_of(size[0])
     merged = P.merge_overlay(a, s)
     before = a.copy()
-    colors = P.repaint(a, s)
+    colors = P.repaint(a, s, flat=flat, ramp=P.RAMP_FLAT if flat else P.RAMP)
     changed = bool((a != before).any())
     if changed and not dry:
         # Palette ("P") files simply become RGBA: the ramp needs more colours than their
@@ -72,12 +74,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="comma separated style folders to process")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--ramp", action="store_true", help="keep a per-row colour instead of one flat colour")
     args = ap.parse_args()
     files = texture_files(tuple(args.only.split(",")) if args.only else None)
     n_merged = n_changed = 0
     merged_files = 0
     for p in files:
-        merged, changed, colors = paint_file(p, args.dry_run)
+        merged, changed, colors = paint_file(p, args.dry_run, flat=not args.ramp)
         n_merged += merged
         n_changed += changed
         merged_files += bool(merged)

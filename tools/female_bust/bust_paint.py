@@ -22,8 +22,12 @@ U, V, UW, VH = 64, 49, 22, 6       # the rectangle sampled by an 8x3x3 cube
 OVERLAY_DV = 6                     # the old clothing cube used the same layout, 6 rows lower
 BOX_D, BOX_W = 3, 8                # its depth and width, which is where its faces sit
 
-# Extra brightness applied to rows 49..54 (top light, bottom in shadow).
-RAMP = [1.06, 1.03, 1.00, 1.00, 0.95, 0.88]
+# Extra brightness applied to rows 49..54 (top light, bottom in shadow).  The bust boxes
+# sample the row 49 + depth of their own cube, so this ramp is also what lights the rings
+# of a ball: the ring glued to the chest is the deepest and lands on the dark rows, the one
+# at the tip of the ball is thin and lands on the light ones -- concentric shading for free.
+RAMP = [1.10, 1.05, 1.00, 0.94, 0.88, 0.80]
+RAMP_FLAT = [1.0] * 6
 
 
 def scale_of(w: int) -> int:
@@ -69,11 +73,21 @@ def merge_overlay(a: np.ndarray, s: int) -> int:
     return int((base[..., :3] != before[..., :3]).any(-1).sum())
 
 
-def repaint(a: np.ndarray, s: int) -> np.ndarray:
-    """Repaint the chest rectangle of ``a`` in place, return the 6 colours used."""
+def repaint(a: np.ndarray, s: int, ramp=None, flat: bool = False) -> np.ndarray:
+    """Repaint the chest rectangle of ``a`` in place, return the colours used.
+
+    ``flat`` collapses the rectangle to a single colour: with a bust that is now a real
+    volume, the only shading left in the texture is the one that hides the seams between
+    the boxes, and a colour that never changes cannot create one.  ``ramp`` re-adds a
+    vertical light-to-dark gradient, which used to be the only roundness cue there was.
+    """
+    ramp = RAMP if ramp is None else ramp
     region = a[V * s: V * s + VH * s, U * s: U * s + UW * s]
-    colors = _row_colors(region, s) * np.array(RAMP, dtype=float)[:, None]
-    colors = np.clip(colors, 0, 255).astype(np.uint8)
+    colors = _row_colors(region, s)
+    if flat:
+        one = np.median(colors, axis=0)                            # one colour, top to bottom
+        colors = np.repeat(one.reshape(1, 3), 6, axis=0)
+    colors = np.clip(colors * np.array(ramp, dtype=float)[:, None], 0, 255).astype(np.uint8)
     for r in range(6):
         region[r * s:(r + 1) * s, :, :3] = colors[r]
         region[r * s:(r + 1) * s, :, 3] = 255

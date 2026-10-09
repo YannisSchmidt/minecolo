@@ -1,24 +1,17 @@
 #!/usr/bin/env python3
 """Rewrite the ``"breast"`` cube of every adult female citizen model.
 
-Before this script a female chest was a single 8x3x3 box, inflated with a
-``CubeDeformation``: it looked like a plank and its "clothing" copy (the second box,
-0.25 thicker) drew a hard shell edge around it, occasionally showing stray pixels of
-the texture.  This script replaces that pair of boxes with eight thin bands that build
-two rounded lobes, and tilts the piece a little less (``-0.4363`` rad instead of
-``-0.5236``) so the bust points forward instead of up.
+Upstream that cube is a single flat 8x3x3 box inflated with a ``CubeDeformation``: a
+plank with no cleft, whose "clothing" copy (a second box, 0.25 thicker) drew a hard
+shell edge around the chest and leaked stray texture pixels.  This script replaces that
+pair with two balls -- each built out of a stack of bands, every band out of concentric
+rings -- and leaves the size of the whole thing to ``CitizenModel.BREAST_DEFORMATION``
+plus the numbers in ``bust_shape.Bust``.  See ``bust_shape.py`` for the profiles.
 
-Per band, top to bottom:
-
-    (width, depth, recess)  depth picks which row of the painted texture ramp the front
-                             face samples (higher row index = darker), recess pulls the
-                             band back from the original front plane, which is what
-                             rounds the silhouette.
-
-The band heights add up to the original 3 px, so the bust never reaches the neck.
-Everything still samples ``texOffs(64, 49)`` and ``BREAST_DEFORMATION``, i.e. the size
-stays a single knob and no UV rectangle moves (see ``paint_textures.py``, which
-repaints that rectangle so the flat colour stretches cleanly).
+The script is idempotent and recovers the frame of the chest piece (centre and front
+plane of the original Blockbench box) from the file itself, so per-model quirks -- the
+courier sits 0.4 px lower, the alchemist's statement is split over several lines -- are
+preserved, and re-running it after a tweak to ``Bust`` rewrites the same files.
 
     python3 tools/female_bust/rework_bust.py [--check-only] [--dry-run]
 """
@@ -30,24 +23,14 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from bust_shape import Bust  # noqa: E402
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 MODEL_DIR = os.path.join(ROOT, "src/main/java/com/minecolonies/core/client/model")
 CITIZEN_MODEL = os.path.join(ROOT, "src/main/java/com/minecolonies/api/client/render/modeltype/CitizenModel.java")
 
-# Bands of one side, top -> bottom: (width, texture-depth, recess in front of the original plane)
-BANDS = [
-    (3.4, 2, 0.6),
-    (3.8, 3, -0.5),
-    (3.8, 4, -1.4),
-    (3.0, 5, -0.2),
-]
-BAND_H = 1.05         # height of a band...
-BAND_STEP = 1.0       # ...and how far the next one starts: the 0.05 they overlap by is what
-                      # keeps two faces of neighbouring bands from ever being exactly coplanar
-                      # (coplanar = z-fighting = a shimmering line inside the cleft)
-CLEAVAGE = 0.5        # gap between the two lobes, in 1/16 blocks
-GAP_STEP = 0.1        # ... opened up band by band, same reason: coplanar inner faces blink
-TILT = -0.4363        # rad, was -0.5236 (-30 deg) in the Blockbench export
+BUST = Bust()
 
 STMT_RE = re.compile(
     r'(?P<indent>[ ]*)PartDefinition (?P<var>\w+)\s*=\s*(?P<parent>\w+)\.addOrReplaceChild\(\s*"breast",'
@@ -61,7 +44,7 @@ def _f(x) -> float:
     return round(float(str(x).rstrip("Ff")), 4)
 
 
-def _fmt(v: float) -> str:
+def fmt(v: float) -> str:
     """Java float literal, e.g. 3.0 -> "3.0F", -0.5 -> "-0.5F", 1.3938 -> "1.3938F"."""
     s = f"{round(float(v), 4):.4f}".rstrip("0")
     return (s + "0" if s.endswith(".") else s) + "F"
@@ -76,20 +59,24 @@ def model_files():
     return out
 
 
-def stack_height() -> float:
-    """Vertical span of the stack of bands (they overlap by BAND_H - BAND_STEP)."""
-    return BAND_STEP * (len(BANDS) - 1) + BAND_H
+def build_boxes(bust: Bust, cx: float, cy: float, front0: float):
+    """Every box of the bust as ``(x, y, z, w, h, d)``, in the frame of the part."""
+    return bust.cells(cx, cy, front0)
 
 
-def original_geometry(src: str):
+def original_geometry(src: str, bust: Bust = BUST):
     """The canonical frame of the chest piece: ``(cx, cy, front0, pose, already_done)``.
 
-    ``cx``/``cy`` are the centre of the original Blockbench box and ``front0`` the plane of
-    its front face; every band is laid out relative to those three numbers, which is what
-    keeps the per-model quirks (the courier sits 0.4 px lower, the alchemist's statement is
-    split over three lines).  When the file has already been rewritten by this script the
-    same three numbers are recovered by inverting the first band, so re-running it after a
-    tweak to ``BANDS`` gives the same file.
+    ``cx``/``cy`` are the centre of the original Blockbench box and ``front0`` the plane
+    of its front face; every band is laid out relative to those three numbers, which is
+    what keeps the per-model quirks (the courier sits 0.4 px lower, the alchemist's
+    statement is split over three lines).
+
+    The frame is *inverted* out of whatever the file currently holds, which makes this
+    script idempotent and lets it upgrade a file written by an older layout of itself:
+    ``LAY_V1`` is the eight-band bust of the first revision of this fork.  The first box
+    of the statement is enough in every case, because the boxes are laid out from the
+    centre of the stack outwards.
     """
     m = STMT_RE.search(src)
     if not m:
@@ -100,49 +87,54 @@ def original_geometry(src: str):
     boxes = [[_f(v) for v in a.split(",")[:6]] for a in raw]
     pose = [_f(v) for v in m.group("pose").split(",")]
     offs = re.findall(r"texOffs\((-?\d+),\s*(-?\d+)\)", m.group(0))
-    if len(boxes) == 2 * len(BANDS) and all(o == ("64", "49") for o in offs):
-        x, y, z, w, h, d = boxes[0]                      # left box of the top band
-        cx = x + w + (CLEAVAGE + GAP_STEP * 0) / 2.0
-        cy = y + stack_height() / 2.0
-        front0 = z - BANDS[0][2]
-        return cx, cy, front0, pose, True
-    x, y, z, w, h, d = boxes[0]
+    x, y, z, w, h, d = boxes[0]                          # left lobe, top band, ring glued to the chest
+
+    n_here = 2 * bust.nbands * len(bust.rings)
+    if len(boxes) == n_here and all(o == (str(bust.u), str(bust.v)) for o in offs):
+        v0 = max(0.18, bust.v_factor(0))
+        cx = x + w + bust.cleavage / 2.0                 # invert bx = cx - w - gap/2, w = W0*v0 already applied
+        cy = y + bust.stack_height() / 2.0
+        front0 = z + bust.rings[0][1] * v0                # invert z = front0 - P0*v0
+        return round(cx, 4), round(cy, 4), round(front0, 4), pose, True
+    if len(boxes) == LAY_V1[0] and all(o == ("64", "49") for o in offs):
+        nb, step, hgt, gap, rec0 = LAY_V1[1:]
+        cx = x + w + gap / 2.0
+        cy = y + (step * (nb - 1) + hgt) / 2.0
+        front0 = z - rec0                                 # that layout pushed band 0 *back* by rec0
+        return round(cx, 4), round(cy, 4), round(front0, 4), pose, True
     return x + w / 2.0, y + h / 2.0, z, pose, False
 
 
-def build_statement(cx, cy, front0, pose, var="breast", parent="bipedBody", indent="        "):
-    """The eight bands of the bust, as a Java statement."""
-    total = stack_height()
-    y = cy - total / 2.0
+# (boxes per side... ) the eight-band layout of the first revision: n boxes, bands,
+# band step, band height, cleavage, recess of the top band (positive = pushed back).
+LAY_V1 = (8, 4, 1.0, 1.05, 0.5, 0.6)
+
+
+def build_statement(cx, cy, front0, pose, bust: Bust = BUST, grow="BREAST_DEFORMATION",
+                     var="breast", parent="bipedBody", indent="        "):
+    """The whole bust, as one Java statement."""
     lines = []
-    for i, (w, d, recess) in enumerate(BANDS):
-        z = front0 + recess
-        gap = CLEAVAGE + GAP_STEP * i
-        for sgn in (-1.0, 1.0):
-            bx = cx + sgn * (w / 2.0 + gap / 2.0) - w / 2.0
-            lines.append(
-                f".texOffs(64, 49).addBox({_fmt(bx)}, {_fmt(y)}, {_fmt(z)}, "
-                f"{_fmt(w)}, {_fmt(BAND_H)}, {_fmt(d)}, BREAST_DEFORMATION)"
-            )
-        y += BAND_STEP
+    for (x, y, z, w, h, d) in build_boxes(bust, cx, cy, front0):
+        lines.append(f".texOffs({bust.u}, {bust.v}).addBox({fmt(x)}, {fmt(y)}, {fmt(z)}, "
+                     f"{fmt(w)}, {fmt(h)}, {fmt(d)}, {grow})")
     px, py, pz = pose[0], pose[1], pose[2]
     body = ("\n" + indent + "  ").join(lines)
     return (
         f"{indent}PartDefinition {var} = {parent}.addOrReplaceChild(\"breast\", CubeListBuilder.create()\n"
         f"{indent}  {body},\n"
-        f"{indent}  PartPose.offsetAndRotation({_fmt(px)}, {_fmt(py)}, {_fmt(pz)}, "
-        f"{_fmt(TILT)}, 0.0F, 0.0F));\n"
+        f"{indent}  PartPose.offsetAndRotation({fmt(px)}, {fmt(py)}, {fmt(pz)}, "
+        f"{fmt(bust.tilt)}, 0.0F, 0.0F));\n"
     )
 
 
-def patch_file(path: str, dry: bool) -> str:
+def patch_file(path: str, dry: bool, bust: Bust = BUST) -> str:
     src = open(path).read()
-    cx, cy, front0, pose, done = original_geometry(src)
+    cx, cy, front0, pose, done = original_geometry(src, bust)
     m = STMT_RE.search(src)
     head = src[:m.start("indent")]
     tail = src[m.end():]
-    new = build_statement(cx, cy, front0, pose, m.group("var"), m.group("parent"), m.group("indent"))
-    # keep whatever followed the statement (a newline is included in `new`)
+    new = build_statement(cx, cy, front0, pose, bust, "BREAST_DEFORMATION",
+                          m.group("var"), m.group("parent"), m.group("indent"))
     if tail.startswith("\n"):
         tail = tail[1:]
     out = head + new + tail
@@ -152,22 +144,23 @@ def patch_file(path: str, dry: bool) -> str:
 
 
 CONST_BLOCK = '''    /**
-     * Inflation (in 1/16 of a block, per axis x / y / z of a cube) applied to every band of the bust of the adult
+     * Inflation (in 1/16 of a block, per axis x / y / z of a cube) applied to every box of the bust of the adult
      * female citizen models. The Blockbench exports put a single flat 8x3x3 cube here with
-     * {@code new CubeDeformation(0.0F)}; the models in this fork build the chest out of eight thin bands (two
-     * rounded lobes of four bands, see {@link com.minecolonies.core.client.model.FemaleCitizenModel}) and all of
-     * them use this constant, so this single line sets the bust size of every female citizen. The x axis stays
-     * small so the arms do not clip into the shape. The four bands of a lobe are 1.05 tall and step by 1.0 (they
-     * overlap a little so no two faces are ever coplanar), which spans 4.05 px instead of the original 3 px, so y
-     * should stay at or below ~1.0 before the top band starts to poke out of the collar.
-     * {@code new CubeDeformation(0.0F)} shrinks the bust down to the untouched shape and size of the bands.
+     * {@code new CubeDeformation(0.0F)}; the models of this fork build the chest out of two balls, each of them a
+     * stack of bands and every band a set of concentric rings (see
+     * {@link com.minecolonies.core.client.model.FemaleCitizenModel}), and all of them use this constant, so this
+     * single line still sets how far the bust sticks out. Growing a box along z only pushes its faces forward, it
+     * stretches no texture, so that is the axis to grow on: 0.0F keeps the shape exactly as the bands describe it,
+     * 1.0F adds two thirds of a block to the projection. The other two axes have to stay at 0: the arms hang at
+     * |x| = 4 and would cut through a box grown along x, and the top band of a lobe already ends 2 px under the
+     * collar.
      */
-    public static final CubeDeformation BREAST_DEFORMATION = new CubeDeformation(0.35F, 0.6F, 1.25F);
+    public static final CubeDeformation BREAST_DEFORMATION = new CubeDeformation(0.0F, 0.0F, 0.35F);
 '''
 
 
 def patch_constants(dry: bool) -> bool:
-    """Replace the two BREAST_* constants (javadoc included) by the new single one."""
+    """Replace the BREAST_DEFORMATION declaration (javadoc included) by the new one."""
     src = open(CITIZEN_MODEL).read()
     decl = "public static final CubeDeformation BREAST_DEFORMATION"
     i = src.find(decl)
@@ -175,8 +168,7 @@ def patch_constants(dry: bool) -> bool:
         raise SystemExit("could not find the BREAST_DEFORMATION declaration in CitizenModel.java")
     start = src.rindex("/**", 0, i)                      # start of its javadoc
     start = src.rindex("\n", 0, start) + 1               # start of the line
-    j = src.find("public static final CubeDeformation BREAST_OVERLAY_DEFORMATION", i)
-    end = src.index(";", j if j > 0 else i) + 1
+    end = src.index(";", i) + 1
     end = src.index("\n", end) + 1
     out = src[:start] + CONST_BLOCK + src[end:]
     changed = out != src
@@ -200,7 +192,7 @@ def main():
         src = open(f).read()
         cx, cy, front0, pose, done = original_geometry(src)
         new = patch_file(f, args.dry_run or args.check_only)
-        nb = new.count(".texOffs(64, 49).addBox")
+        nb = new.count(f".texOffs({BUST.u}, {BUST.v}).addBox")
         uses_const = "BREAST_DEFORMATION)" in new
         if args.check_only:
             flag = "[deja reecrit]" if done else ""
@@ -209,7 +201,7 @@ def main():
             continue
         n += 1
         again = "  (reecrit a l'identique)" if done else ""
-        print(f"{os.path.basename(f):32s} {nb:2d} bands  constants={'ok' if uses_const else 'MISSING'}{again}")
+        print(f"{os.path.basename(f):32s} {nb:2d} boxes  constants={'ok' if uses_const else 'MISSING'}{again}")
     if not args.check_only:
         print(f"patched {n} model files")
 
