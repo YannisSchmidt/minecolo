@@ -1,6 +1,14 @@
 // Made with Blockbench 3.5.1
 // Exported for Minecraft version 1.15
 // Paste this class into your mod and generate all required imports
+//
+// Modified (minecolo fork):
+//  - the flat cap ("Cap") was replaced by a yellow construction hard hat ("HardHat")
+//  - a leather tool belt ("toolBelt") and a rolled-up blueprint ("blueprintRoll")
+//    were added to the work gear ("toolbag" group, only visible while working)
+//  - the hair bun is lowered to the nape while the hard hat is worn
+//  The new parts use texture space that was previously unused (or used by the old cap),
+//  see tools/female_builder/paint_female_builder_textures.py for the texture side.
 package com.minecolonies.core.client.model;
 
 import com.minecolonies.api.client.render.modeltype.CitizenModel;
@@ -13,6 +21,26 @@ import org.jetbrains.annotations.NotNull;
 
 public class FemaleBuilderModel extends CitizenModel<AbstractEntityCitizen>
 {
+    /**
+     * Name of the hard hat group (child of the head).
+     */
+    private static final String HARD_HAT = "HardHat";
+
+    /**
+     * Name of the hair bun part (child of the head).
+     */
+    private static final String HAIR_BUN = "hairback2_r1";
+
+    /**
+     * Default (Blockbench) y pivot of the hair bun, mid height of the back of the head.
+     */
+    private static final float HAIR_BUN_DEFAULT_Y = -4.9F;
+
+    /**
+     * Y pivot of the hair bun while the hard hat is worn: the hair is tied lower,
+     * on the nape, so the bun comes out below the back edge of the hard hat shell.
+     */
+    private static final float HAIR_BUN_LOW_Y = -2.7F;
 
     public FemaleBuilderModel(final ModelPart part)
     {
@@ -28,8 +56,8 @@ public class FemaleBuilderModel extends CitizenModel<AbstractEntityCitizen>
         PartDefinition bipedHead = partdefinition.addOrReplaceChild("head", CubeListBuilder.create().texOffs(0, 0).addBox(-4.0F, -8.0F, -4.0F, 8.0F, 8.0F, 8.0F, new CubeDeformation(0.0F))
           .texOffs(32, 0).addBox(-4.0F, -8.0F, -4.0F, 8.0F, 8.0F, 8.0F, new CubeDeformation(0.5F)), PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        PartDefinition hairback2_r1 = bipedHead.addOrReplaceChild("hairback2_r1", CubeListBuilder.create().texOffs(74, 7).addBox(-1.0F, -1.0F, 1.1F, 2.0F, 2.0F, 1.0F, new CubeDeformation(0.0F))
-          .texOffs(74, 0).addBox(-2.0F, -2.0F, -1.9F, 4.0F, 4.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.1F, -4.9F, 5.9F, 0.1309F, 0.0F, 0.0F));
+        PartDefinition hairback2_r1 = bipedHead.addOrReplaceChild(HAIR_BUN, CubeListBuilder.create().texOffs(74, 7).addBox(-1.0F, -1.0F, 1.1F, 2.0F, 2.0F, 1.0F, new CubeDeformation(0.0F))
+          .texOffs(74, 0).addBox(-2.0F, -2.0F, -1.9F, 4.0F, 4.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.1F, HAIR_BUN_DEFAULT_Y, 5.9F, 0.1309F, 0.0F, 0.0F));
 
         PartDefinition HairExtension = bipedHead.addOrReplaceChild("HairExtension", CubeListBuilder.create().texOffs(56, 0).addBox(-4.0F, 0.0F, 3.0F, 8.0F, 7.0F, 1.0F, new CubeDeformation(0.5F)), PartPose.offset(0.0F, 1.0F, 0.0F));
 
@@ -39,26 +67,34 @@ public class FemaleBuilderModel extends CitizenModel<AbstractEntityCitizen>
 
         PartDefinition ponytailBase_r1 = Ponytail.addOrReplaceChild("ponytailBase_r1", CubeListBuilder.create().texOffs(86, 48).mirror().addBox(0.0F, 0.0F, 0.0F, 2.0F, 5.0F, 2.0F, new CubeDeformation(0.0F)).mirror(false), PartPose.offsetAndRotation(-1.0F, -28.0F, 2.0F, 0.5577F, 0.0F, 0.0F));
 
-        PartDefinition Cap = bipedHead.addOrReplaceChild("Cap", CubeListBuilder.create(), PartPose.offsetAndRotation(0.0F, -7.6F, 0.1F, -0.0873F, 0.0F, 0.0F));
+        // ---- Construction hard hat (replaces the old flat cap). Pivot = top centre of the head. ----
+        PartDefinition HardHat = bipedHead.addOrReplaceChild(HARD_HAT, CubeListBuilder.create(), PartPose.offset(0.0F, -8.0F, 0.0F));
 
-        PartDefinition center = Cap.addOrReplaceChild("center", CubeListBuilder.create().texOffs(64, 28).addBox(-4.0F, 0.5F, -4.0F, 8.0F, 1.0F, 8.0F, new CubeDeformation(0.51F)), PartPose.offset(0.0F, -1.0F, 0.0F));
+        // main shell wrapping the top of the head (0.6 inflation: 0.1 outside the hair layer)
+        PartDefinition shell = HardHat.addOrReplaceChild("shell", CubeListBuilder.create().texOffs(64, 11).addBox(-4.0F, -1.0F, -4.0F, 8.0F, 4.0F, 8.0F, new CubeDeformation(0.6F)), PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        PartDefinition tip = Cap.addOrReplaceChild("tip", CubeListBuilder.create().texOffs(88, 28).addBox(-0.5F, 3.0F, -0.5F, 1.0F, 1.0F, 1.0F, new CubeDeformation(0.4F)), PartPose.offsetAndRotation(0.0F, -4.2F, 0.0F, 0.0F, -0.7418F, 0.0F));
+        // smaller rounded dome on top of the shell
+        PartDefinition dome = HardHat.addOrReplaceChild("dome", CubeListBuilder.create().texOffs(96, 11).addBox(-3.0F, -2.3F, -3.0F, 6.0F, 2.0F, 6.0F, new CubeDeformation(0.3F)), PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        PartDefinition sideFront = Cap.addOrReplaceChild("sideFront", CubeListBuilder.create().texOffs(92, 28).addBox(-4.0F, -0.3454F, -4.0685F, 8.0F, 1.0F, 1.0F, new CubeDeformation(0.5F)), PartPose.offsetAndRotation(0.0F, -0.6F, -0.5F, 0.1745F, 0.0F, 0.0F));
+        // reinforcement ridge running from the front to the back of the dome
+        PartDefinition ridge = HardHat.addOrReplaceChild("ridge", CubeListBuilder.create().texOffs(96, 19).addBox(-1.0F, -2.8F, -4.0F, 2.0F, 1.0F, 8.0F, new CubeDeformation(0.25F)), PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        PartDefinition sideLeft = Cap.addOrReplaceChild("sideLeft", CubeListBuilder.create().texOffs(110, 28).addBox(-3.5F, -0.3975F, -4.364F, 8.0F, 1.0F, 1.0F, new CubeDeformation(0.5F)), PartPose.offsetAndRotation(0.0F, -0.6F, -0.5F, 0.1745F, -1.5708F, 0.0F));
+        // short brim all around the bottom edge of the shell
+        PartDefinition brim = HardHat.addOrReplaceChild("brim", CubeListBuilder.create().texOffs(88, 0).addBox(-5.0F, 2.5F, -5.0F, 10.0F, 1.0F, 10.0F, new CubeDeformation(0.25F)), PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        PartDefinition sideRight = Cap.addOrReplaceChild("sideRight", CubeListBuilder.create().texOffs(92, 30).addBox(-3.5F, -0.3801F, -4.2655F, 8.0F, 1.0F, 1.0F, new CubeDeformation(0.5F)), PartPose.offsetAndRotation(0.0F, -0.6F, 0.5F, 0.1745F, 1.5708F, 0.0F));
-
-        PartDefinition sideBack = Cap.addOrReplaceChild("sideBack", CubeListBuilder.create().texOffs(110, 30).addBox(-4.0F, -0.2933F, -3.7731F, 8.0F, 1.0F, 1.0F, new CubeDeformation(0.5F)), PartPose.offsetAndRotation(0.0F, -0.6F, 0.5F, 0.1745F, 3.1416F, 0.0F));
-
-        PartDefinition visor = Cap.addOrReplaceChild("visor", CubeListBuilder.create().texOffs(88, 32).addBox(-4.0F, -0.5F, -1.5F, 8.0F, 1.0F, 3.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, 0.9F, -5.5F, 0.0873F, 0.0F, 0.0F));
+        // front peak, slightly tilted down
+        PartDefinition peak = HardHat.addOrReplaceChild("peak", CubeListBuilder.create().texOffs(64, 23).addBox(-4.0F, -0.5F, -2.0F, 8.0F, 1.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(0.0F, 2.75F, -5.0F, 0.2618F, 0.0F, 0.0F));
 
         PartDefinition bipedBody = partdefinition.addOrReplaceChild("body", CubeListBuilder.create().texOffs(16, 16).addBox(-4.0F, 0.0F, -2.0F, 8.0F, 12.0F, 4.0F, new CubeDeformation(0.0F))
           .texOffs(16, 32).addBox(-4.0F, 0.0F, -2.0F, 8.0F, 12.0F, 4.0F, new CubeDeformation(0.25F)), PartPose.offset(0.0F, 0.0F, 0.0F));
 
         PartDefinition toolbag = bipedBody.addOrReplaceChild("toolbag", CubeListBuilder.create(), PartPose.offset(0.0F, 0.0F, 0.0F));
+
+        // leather tool belt around the waist (0.5 inflation: 0.25 outside the jacket layer)
+        PartDefinition toolBelt = toolbag.addOrReplaceChild("toolBelt", CubeListBuilder.create().texOffs(64, 28).addBox(-4.0F, 10.0F, -2.0F, 8.0F, 2.0F, 4.0F, new CubeDeformation(0.5F)), PartPose.offset(0.0F, 0.0F, 0.0F));
+
+        // rolled-up blueprint tucked horizontally behind the belt, in the lower back (a vertical 2x10x2 box turned on its side)
+        PartDefinition blueprintRoll = toolbag.addOrReplaceChild("blueprintRoll", CubeListBuilder.create().texOffs(120, 11).addBox(-1.0F, -5.0F, -1.0F, 2.0F, 10.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(1.0F, 10.5F, 3.4F, 0.0F, 0.0F, 1.4708F));
 
         PartDefinition strapback_r1 = toolbag.addOrReplaceChild("strapback_r1", CubeListBuilder.create().texOffs(122, 46).addBox(-0.5F, -14.3F, 0.0F, 1.0F, 15.0F, 0.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(-5.5665F, 9.9968F, 4.2551F, 0.0913F, 0.0015F, 0.7592F));
 
@@ -103,7 +139,12 @@ public class FemaleBuilderModel extends CitizenModel<AbstractEntityCitizen>
     public void setupAnim(@NotNull final AbstractEntityCitizen entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch)
     {
         super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-        body.getChild("toolbag").visible = isWorking(entity);
-        head.getChild("Cap").visible = isWorking(entity) && displayHat(entity);
+        final boolean working = isWorking(entity);
+        final boolean hardHatOn = working && displayHat(entity);
+
+        body.getChild("toolbag").visible = working;
+        head.getChild(HARD_HAT).visible = hardHatOn;
+        // hair tied lower while the hard hat is worn, so the bun does not clip through the shell
+        head.getChild(HAIR_BUN).y = hardHatOn ? HAIR_BUN_LOW_Y : HAIR_BUN_DEFAULT_Y;
     }
 }
