@@ -71,8 +71,8 @@ public class FemaleFisherModel extends CitizenModel<AbstractEntityCitizen>
           .texOffs(78, 34).addBox(-1.0F, -3.1F, -3.0F, 2.0F, 4.0F, 3.0F, new CubeDeformation(-1.0F))
           .texOffs(83, 36).addBox(-1.0F, 1.3F, -2.6F, 2.0F, 6.0F, 5.0F, new CubeDeformation(-1.0F)), PartPose.offsetAndRotation(-2.6F, 11.5F, -2.4F, 0.0F, 1.5708F, 0.0F));
 
-        PartDefinition breast = bipedBody.addOrReplaceChild("breast", CubeListBuilder.create().texOffs(64, 49).addBox(-3.0F, 1.8938F, -5.716F, 8.0F, 3.0F, 3.0F, new CubeDeformation(0.0F))
-          .texOffs(64, 55).addBox(-3.0F, 1.8938F, -5.716F, 8.0F, 3.0F, 3.0F, new CubeDeformation(0.25F)), PartPose.offsetAndRotation(-1.0F, 3.0F, 4.0F, -0.5236F, 0.0F, 0.0F));
+        PartDefinition breast = bipedBody.addOrReplaceChild("breast", CubeListBuilder.create().texOffs(64, 49).addBox(-3.0F, 1.8938F, -5.716F, 8.0F, 3.0F, 3.0F, BREAST_DEFORMATION)
+          .texOffs(64, 55).addBox(-3.0F, 1.8938F, -5.716F, 8.0F, 3.0F, 3.0F, BREAST_OVERLAY_DEFORMATION), PartPose.offsetAndRotation(-1.0F, 3.0F, 4.0F, -0.5236F, 0.0F, 0.0F));
 
         PartDefinition fishingPole = bipedBody.addOrReplaceChild("fishingPole", CubeListBuilder.create().texOffs(122, 25).mirror().addBox(-4.3F, -4.4F, 2.0F, 1.0F, 16.0F, 1.0F, new CubeDeformation(0.0F)).mirror(false)
           .texOffs(122, 42).mirror().addBox(-6.3F, 6.6F, 2.0F, 2.0F, 2.0F, 1.0F, new CubeDeformation(0.0F)).mirror(false)

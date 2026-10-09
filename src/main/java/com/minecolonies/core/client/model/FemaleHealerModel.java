@@ -92,8 +92,8 @@ public class FemaleHealerModel extends CitizenModel<AbstractEntityCitizen>
 
         PartDefinition breastcoat_r1 = coatCenter.addOrReplaceChild("breastcoat_r1", CubeListBuilder.create().texOffs(64, 41).addBox(-4.0F, -3.4062F, -5.216F, 8.0F, 3.0F, 3.0F, new CubeDeformation(0.49F)), PartPose.offsetAndRotation(5.2F, 11.0F, 0.0F, -0.6109F, 0.0F, 0.0F));
 
-        PartDefinition breast = bipedBody.addOrReplaceChild("breast", CubeListBuilder.create().texOffs(64, 49).addBox(-3.0F, 1.8938F, -5.716F, 8.0F, 3.0F, 3.0F, new CubeDeformation(0.0F))
-          .texOffs(64, 55).addBox(-3.0F, 1.8938F, -5.716F, 8.0F, 3.0F, 3.0F, new CubeDeformation(0.25F)), PartPose.offsetAndRotation(-1.0F, 3.0F, 4.0F, -0.5236F, 0.0F, 0.0F));
+        PartDefinition breast = bipedBody.addOrReplaceChild("breast", CubeListBuilder.create().texOffs(64, 49).addBox(-3.0F, 1.8938F, -5.716F, 8.0F, 3.0F, 3.0F, BREAST_DEFORMATION)
+          .texOffs(64, 55).addBox(-3.0F, 1.8938F, -5.716F, 8.0F, 3.0F, 3.0F, BREAST_OVERLAY_DEFORMATION), PartPose.offsetAndRotation(-1.0F, 3.0F, 4.0F, -0.5236F, 0.0F, 0.0F));
 
         PartDefinition bag = bipedBody.addOrReplaceChild("bag", CubeListBuilder.create(), PartPose.offset(0.0F, 0.0F, 0.0F));
 

@@ -23,6 +23,21 @@ public class CitizenModel<T extends AbstractEntityCitizen> extends HumanoidModel
 
     public static boolean isItApril1st = false;
 
+    /**
+     * Inflation (in 1/16 block, per axis x / y / z of the cube) applied to the "breast" cube of every adult female
+     * citizen model. The Blockbench exports use {@code new CubeDeformation(0.0F)} here; a bigger value gives the
+     * female models a bigger chest without touching any texture (the 8x3x3 texture area is simply stretched over
+     * the bigger cube). The cube is tilted by -30 degrees, so the y/z growth is what makes it stick out; x growth is
+     * kept small so the arms do not clip into it. Values above ~1.25 make the top edge of the cube rise above the
+     * neck line: increase the y origin of the cube (1.8938F in the models) accordingly if you want to go bigger.
+     */
+    public static final CubeDeformation BREAST_DEFORMATION = new CubeDeformation(0.25F, 1.0F, 1.0F);
+
+    /**
+     * Inflation of the second (outer, 0.25 thicker) layer of the "breast" cube.
+     */
+    public static final CubeDeformation BREAST_OVERLAY_DEFORMATION = BREAST_DEFORMATION.extend(0.25F);
+
     public CitizenModel(final ModelPart part)
     {
         super(part, RenderType::entityCutoutNoCull);

@@ -57,8 +57,13 @@ class Cube:
     w: float
     h: float
     d: float
-    g: float
+    g: float          # growX (kept for display)
     mirror: bool
+    gy: float = None  # growY / growZ when a 3-axis CubeDeformation is used
+    gz: float = None
+
+    def grow(self):
+        return self.g, (self.g if self.gy is None else self.gy), (self.g if self.gz is None else self.gz)
 
 
 @dataclass
@@ -103,11 +108,15 @@ def parse_cube_list(s: str) -> List[Cube]:
         else:  # addBox
             nums = [_f(t) for t in re.findall(NUM, args)]
             x, y, z, w, h, d = nums[:6]
-            g = 0.0
-            if "CubeDeformation(" in args:
-                gm = re.search(r"CubeDeformation\(\s*(" + NUM + r")", args)
-                g = _f(gm.group(1)) if gm else 0.0
-            cubes.append(Cube(u, v, x, y, z, w, h, d, g, mirror))
+            g, gy, gz = 0.0, None, None
+            gm = re.search(r"CubeDeformation\(([^()]*)\)", args)
+            if gm:
+                gs = [_f(t) for t in re.findall(NUM, gm.group(1))]
+                if len(gs) >= 3:
+                    g, gy, gz = gs[0], gs[1], gs[2]
+                elif gs:
+                    g = gs[0]
+            cubes.append(Cube(u, v, x, y, z, w, h, d, g, mirror, gy, gz))
     return cubes
 
 
@@ -122,31 +131,48 @@ def parse_pose(s: str) -> Tuple[Tuple[float, float, float], Tuple[float, float, 
     return (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
 
 
-def _resolve_constants(src: str, body: str) -> str:
-    """Inline ``static final`` String / numeric constants of the class used inside createMesh()."""
+def _resolve_constants(src: str, body: str, extra_sources: Tuple[str, ...] = ()) -> str:
+    """Inline ``static final`` String / numeric / CubeDeformation constants used inside createMesh().
+
+    Constants may come from the model class itself or from ``extra_sources`` (e.g. the
+    ``CitizenModel`` base class). ``NAME.extend(g)`` on a known CubeDeformation constant is evaluated.
+    """
     consts = {}
-    for cm in re.finditer(r"static\s+final\s+(String|float|double|int)\s+(\w+)\s*=\s*([^;]+);", src):
-        typ, name, value = cm.groups()
-        value = value.strip()
-        if typ == "String":
-            if not re.fullmatch(r"\"[^\"]*\"", value):
+    for text in extra_sources + (src,):
+        for cm in re.finditer(r"static\s+final\s+(String|float|double|int|CubeDeformation)\s+(\w+)\s*=\s*([^;]+);", text):
+            typ, name, value = cm.groups()
+            value = " ".join(value.split())
+            if typ == "String":
+                if not re.fullmatch(r"\"[^\"]*\"", value):
+                    continue
+            elif typ == "CubeDeformation":
+                em = re.fullmatch(r"(\w+)\.extend\(\s*(" + NUM + r")\s*\)", value)
+                if em and em.group(1) in consts:
+                    base = [_f(t) for t in re.findall(NUM, consts[em.group(1)])]
+                    if len(base) == 1:
+                        base = base * 3
+                    e = _f(em.group(2))
+                    value = "new CubeDeformation(%sF, %sF, %sF)" % (base[0] + e, base[1] + e, base[2] + e)
+                elif not re.fullmatch(r"new\s+CubeDeformation\([^()]*\)", value):
+                    continue
+            elif not re.fullmatch(NUM, value):
                 continue
-        elif not re.fullmatch(NUM, value):
-            continue
-        consts[name] = value
+            consts[name] = value
     for name, value in consts.items():
-        body = re.sub(r"\b" + re.escape(name) + r"\b", value, body)
+        body = re.sub(r"(?<![\w.])" + re.escape(name) + r"\b", value, body)
+        body = re.sub(r"\bCitizenModel\." + re.escape(name) + r"\b", value, body)
     return body
 
 
-def parse_model(java_path: str) -> Model:
+def parse_model(java_path: str, constants_from: Tuple[str, ...] = ()) -> Model:
     src = _strip_comments(open(java_path, encoding="utf-8").read())
+    extra = tuple(_strip_comments(open(f, encoding="utf-8").read()) for f in constants_from)
     m = re.search(r"createMesh\s*\([^)]*\)\s*\{(.*?)return\s+LayerDefinition\.create\(\s*\w+\s*,\s*(\d+)\s*,\s*(\d+)\s*\)", src, re.S)
     if not m:
         sys.exit("createMesh() not found in " + java_path)
     body, tex_w, tex_h = m.group(1), int(m.group(2)), int(m.group(3))
     body = " ".join(body.split())
-    body = _resolve_constants(src, body)
+    body = _resolve_constants(src, body, extra)
     root_var = None
     rm = re.search(r"PartDefinition\s+(\w+)\s*=\s*\w+\.getRoot\(\)", body)
     if rm:
@@ -208,11 +234,12 @@ def part_matrix(p: Part, zero_rot: bool) -> np.ndarray:
 #   vertex7=(x0,y0,z0) vertex=(x1,y0,z0) vertex1=(x1,y1,z0) vertex2=(x0,y1,z0)
 #   vertex3=(x0,y0,z1) vertex4=(x1,y0,z1) vertex5=(x1,y1,z1) vertex6=(x0,y1,z1)
 def cube_quads(c: Cube):
-    x0, x1 = c.x - c.g, c.x + c.w + c.g
+    gx, gy, gz = c.grow()
+    x0, x1 = c.x - gx, c.x + c.w + gx
     if c.mirror:
         x0, x1 = x1, x0
-    y0, y1 = c.y - c.g, c.y + c.h + c.g
-    z0, z1 = c.z - c.g, c.z + c.d + c.g
+    y0, y1 = c.y - gy, c.y + c.h + gy
+    z0, z1 = c.z - gz, c.z + c.d + gz
     v7 = (x0, y0, z0); v_ = (x1, y0, z0); v1 = (x1, y1, z0); v2 = (x0, y1, z0)
     v3 = (x0, y0, z1); v4 = (x1, y0, z1); v5 = (x1, y1, z1); v6 = (x0, y1, z1)
     u, v, w, h, d = c.u, c.v, c.w, c.h, c.d
@@ -436,13 +463,15 @@ def main(argv=None):
     ap.add_argument("--scale", type=float, default=12.0, help="pixels per model unit (1/16 block)")
     ap.add_argument("--keep-pose", action="store_true",
                     help="keep the PartPose rotation of head/body/arms/legs (by default they are zeroed, like setupAnim() does when the citizen stands still)")
+    ap.add_argument("--constants-from", action="append", default=[], metavar="FILE.java",
+                    help="extra Java source(s) whose static final constants may be referenced by the model (e.g. CitizenModel.java)")
     ap.add_argument("--pivot", action="append", default=[], metavar="NAME=X,Y,Z",
                     help="override the pivot of a part (what setupAnim() may do at runtime), e.g. hairback2_r1=0.1,-2.5,5.9")
     ap.add_argument("--list", action="store_true", help="print the part tree and exit")
     ap.add_argument("--check", action="store_true", help="validate UV rectangles against the texture")
     a = ap.parse_args(argv)
 
-    model = parse_model(a.java)
+    model = parse_model(a.java, tuple(a.constants_from))
     for spec in a.pivot:
         name, _, xyz = spec.partition("=")
         if name not in model.by_name:
@@ -452,7 +481,7 @@ def main(argv=None):
         def dump(p: Part, depth=0):
             print("  " * depth + f"{p.name}  pivot={p.pivot} rot={tuple(round(r, 4) for r in p.rot)} cubes={len(p.cubes)}")
             for c in p.cubes:
-                print("  " * (depth + 1) + f"- texOffs({c.u},{c.v}) box({c.x},{c.y},{c.z} {c.w}x{c.h}x{c.d}) g={c.g}{' mirror' if c.mirror else ''}")
+                print("  " * (depth + 1) + f"- texOffs({c.u},{c.v}) box({c.x},{c.y},{c.z} {c.w}x{c.h}x{c.d}) g={c.grow() if c.gy is not None else c.g}{' mirror' if c.mirror else ''}")
             for ch in p.children:
                 dump(ch, depth + 1)
         for r in model.roots:
