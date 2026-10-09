@@ -207,16 +207,70 @@ Ce qui est connu et assumé :
 
 ---
 
-## 5. Voir le résultat en jeu
+## 5. Passer du code au jar Minecraft
 
-Le rendu des citoyens est **côté client** : c'est le jar MineColonies du client qui dessine
-les modèles (et qui enregistre la scène dans les replay/spectateur). Il faut donc compiler
-ce fork (`./gradlew build` sur une machine avec accès aux dépôts Maven/NeoForge ; le jar
-sort dans `build/libs/`) et le mettre dans le `mods/` du client qui filme. Si ton ami doit
-le voir sur **son** écran, c'est son client qui doit avoir le jar modifié — le serveur peut
-garder la version standard, seul le rendu change et la chaîne de version n'est pas touchée.
+**Attention au piège du zip** : le bouton « Code → Download ZIP » de la page du dépôt
+télécharge la branche par défaut `main`, qui ne contient que le README. Le code est sur
+`arena/f86d8630-minecolo` :
 
-Historique sur la branche `arena/f86d8630-minecolo` : `155041e5` (le cube gonflé, premier
-essai) puis ce commit (bandes + textures). La première modification du fork (buildeuse :
-casque de chantier, ceinture à outils, rouleau de plans) est décrite dans
-`MODIFICATIONS_BUILDEUSE.md`.
+```bash
+git clone -b arena/f86d8630-minecolo https://github.com/YannisSchmidt/minecolo.git
+# ou, sans git :
+curl -LO https://github.com/YannisSchmidt/minecolo/archive/refs/heads/arena/f86d8630-minecolo.zip
+```
+
+Prérequis : **un JDK 21** (par ex. Temurin 21, `java -version` doit répondre `21.x`),
+4 Go de RAM dispo et une connexion internet — Gradle 8.13 est fourni par `gradlew`,
+rien d'autre à installer. Le build n'a pas besoin du dépôt git (la fonction
+`GitInformation` n'est pas activée dans ce projet), les traductions/datagen sont déjà
+dans l'arbre, et aucun jeton Crowdin n'est requis (les tâches correspondantes ne sont
+câblées que si la propriété est définie).
+
+```bash
+cd minecolo
+./gradlew build            # Windows : gradlew.bat build
+```
+
+La première exécution télécharge NeoForge, les mappings et les dépendances (5 à 15 min).
+Le mod installable est :
+
+```
+build/libs/minecolonies-0.0.11-1.21.1.jar
+```
+
+(le nom vient de `modId` + `modVersion` + version MC du `gradle.properties` ; ignorer les
+fichiers `-sources`, `-dev`, `-javadoc`). Pour un nom plus parlant dans la liste des mods
+de Minecraft :
+
+```bash
+./gradlew build -PmodVersion=1.1.1399 -PmodVersionSuffix=troll
+# -> build/libs/minecolonies-1.1.1399-1.21.1-troll.jar
+```
+
+Installation : ce jar dans `.minecraft/mods/` (Windows : `%appdata%\.minecraft\mods`),
+avec **NeoForge 21.1.x pour Minecraft 1.21.1** et les mods dont dépend MineColonies
+(pour 1.21.1 : Structurize, BlockUI, MultiPiston, Domum Ornamentum, TownTalk). Sans ces
+dépendances le jeu refuse de démarrer le mod. En cas d'erreur mémoire, augmenter
+`org.gradle.jvmargs` dans `gradle.properties` (`-Xmx6G`) ; en cas de plainte des tests,
+`./gradlew build -x test`.
+
+Le rendu des citoyens est **côté client** : c'est le jar du client qui dessine les modèles
+(et qui filme). En solo, le dossier `mods` de ce client suffit. Si le monde tourne sur un
+serveur, le serveur doit avoir MineColonies aussi — le plus simple est d'y mettre le même
+jar modifié ; la version n'ayant pas changé, un client avec le fork et un serveur avec le
+mod officiel se reconnaissent quand même (le `serverSideVersionCheck` compare la chaîne de
+version, inchangée ici).
+
+### Réutiliser les outils de ce fork
+
+Les scripts de `tools/female_bust/` ( régénération des 40 modèles, repeinte des textures,
+rendus de comparaison) tournent hors de Gradle, avec juste Python + Pillow + NumPy :
+
+```bash
+pip install pillow numpy
+python3 tools/female_bust/rework_bust.py       # Applique BANDS/CLEAVAGE/TILT aux 40 modèles
+python3 tools/female_bust/paint_textures.py     # repeint la zone du buste (1720 textures)
+python3 tools/female_bust/proto.py --scale 22   # compare plusieurs formes avant de décider
+python3 tools/female_bust/make_docs.py          # régénère les PNG de documentation
+```
+
